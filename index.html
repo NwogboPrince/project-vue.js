@@ -1,0 +1,191 @@
+<!DOCTYPE html>  
+<html lang="en">  
+<head>  
+    <meta charset="UTF-8" />  
+    <title>Next-line stocks</title>  
+    <!-- Import Styles -->  
+    <link rel="stylesheet" href="./styles.css" />  
+    <!-- Import Vue.js -->  
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>  
+</head>  
+<body>  
+    <div id="app">  
+        <div class="nav-bar"></div>  
+        <div class="cart">Cart ({{ cart.length }})</div>  
+        <product-display :premium="premium" @add-to-cart="updateCart"></product-display>  
+    </div>  
+
+    <!-- Import Js -->  
+    <script src="./main.js"></script>  
+    <script src="./Components/ReviewList.js"></script>  
+
+    <!-- Mount App -->  
+    <script>  
+        const app = Vue.createApp({  
+            data() {  
+                return {  
+                    cart: [],  
+                    premium: true,  
+                };  
+            },  
+            methods: {  
+                updateCart(id) {  
+                    this.cart.push(id);  
+                }  
+            },  
+        });  
+
+        // Review Form Component  
+        app.component('review-form', {  
+            template: `  
+            <form class="review-form" @submit.prevent="onSubmit">  
+                <h3>Leave a review</h3>  
+                <label for="name">Name:</label>  
+                <input id="name" v-model="name" required>  
+        
+                <label for="review">Review:</label>  
+                <textarea id="review" v-model="review" required></textarea>  
+        
+                <label for="rating">Rating:</label>  
+                <select id="rating" v-model.number="rating" required>  
+                    <option disabled value="">Select a rating</option>  
+                    <option>5</option>  
+                    <option>4</option>  
+                    <option>3</option>  
+                    <option>2</option>  
+                    <option>1</option>  
+                </select>  
+        
+                <input class="button" type="submit" value="Submit">  
+            </form>`,  
+            data() {  
+                return {  
+                    name: '',  
+                    review: '',  
+                    rating: null,  
+                };  
+            },  
+            methods: {  
+                onSubmit() {
+                    if (this.name === '' || this.review === '' || this.rating === null) {  
+                        alert('Review is incomplete. Please fill out every field.');  
+                        return;  
+                    }
+
+                    
+                    let productReview = {  
+                        name: this.name,  
+                        review: this.review,  
+                        rating: this.rating,  
+                    };  
+                    this.$emit('review-submitted', productReview);  
+        
+                    // Reset the form fields  
+                    this.name = '';  
+                    this.review = '';  
+                    this.rating = null;  
+                }  
+            },  
+        });  
+
+        // Review List Component  
+        app.component('review-list', {  
+            props: {  
+                reviews: {  
+                    type: Array,  
+                    required: true  
+                }  
+            },  
+            template: `  
+            <div class="review-container">  
+                <h3>Reviews:</h3>  
+                <ul>  
+                    <li v-for="(review, index) in reviews" :key="index">  
+                        {{ review.name }} gave this {{ review.rating }} stars  
+                        <br/>  
+                        "{{ review.review }}"  
+                    </li>  
+                </ul>  
+            </div>`,  
+        });  
+
+        // Product Display Component  
+        app.component('product-display', {  
+            props: {  
+                premium: {  
+                    type: Boolean,  
+                    required: true  
+                }  
+            },  
+            template: `  
+            <div class="product-display">  
+                <div class="product-container">  
+                    <div class="product-image">  
+                        <img v-bind:src="image" />  
+                    </div>  
+                    <div class="product-info">  
+                        <h1>{{ title }}</h1>  
+                        <p v-if="inStock">In stock</p>  
+                        <p v-else>Out of stock</p>  
+                        <p>Shipping: {{ shipping }}</p>  
+                        <ul>  
+                            <li v-for="detail in details" :key="detail">{{ detail }}</li>  
+                        </ul>  
+                        <div v-for="(variant, index) in variants" :key="variant.id"  
+                             @mouseover="updateVariant(index)"  
+                             class="color-circle"  
+                             :style="{ backgroundColor: variant.color }">  
+                            {{ variant.color }}  
+                        </div>  
+                        <button class="button" :class="{ disabledButton: !inStock }"  
+                                :disabled="!inStock"  
+                                v-on:click="addToCart">Add to Cart</button>  
+                        <review-list v-if="reviews.length" :reviews="reviews"></review-list>  
+                        <review-form @review-submitted="addReview"></review-form>  
+                    </div>  
+                </div>  
+            </div>`,  
+            data() {   
+                return {  
+                    product: 'Socks',  
+                    brand: 'NextLine',  
+                    selectedVariant: 0,  
+                    details: ['50% cotton', '30% wool', '20% polyester'],  
+                    variants: [  
+                        { id: 2234, color: 'red', image: "https://i.postimg.cc/qqNtbSWs/christmas-socks-ready-candies.jpg", quantity: 50 },  
+                        { id: 2235, color: 'pink', image: "https://i.postimg.cc/SN78cGHt/kid-wearing-pink-with-green-stripe-socks-white-sneakers.jpg", quantity: 0 }  
+                    ],  
+                    reviews: [],  
+                };  
+            },  
+            methods: {  
+                addToCart() {  
+                    this.$emit('add-to-cart', this.variants[this.selectedVariant].id);  
+                },  
+                updateVariant(index) {  
+                    this.selectedVariant = index;  
+                },  
+                addReview(review) {  
+                    this.reviews.push(review);  
+                }  
+            },  
+            computed: {  
+                title() {  
+                    return this.brand + ' ' + this.product;  
+                },  
+                image() {  
+                    return this.variants[this.selectedVariant].image;  
+                },  
+                inStock() {  
+                    return this.variants[this.selectedVariant].quantity > 0;  
+                },  
+                shipping() {  
+                    return this.premium ? 'Free' : 2.99;  
+                }  
+            }  
+        });  
+
+        app.mount('#app');  
+    </script>  
+</body>  
+</html>
